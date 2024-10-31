@@ -117,6 +117,14 @@ def get_pts_as_numpy_array(obj):
     @return numpy array of XYs"""
     pts = None
 # YOUR CODE HERE
+    #print(obj)
+    x_coords = [point[0] for point in obj['XYs']]
+    y_coords = [point[1] for point in obj['XYs']]
+    points_2d = np.array([x_coords, y_coords])
+    ones_row = np.ones((1, points_2d.shape[1]))
+    pts = np.vstack((points_2d, ones_row))
+   # pts = np.array(pts, dtype=float)
+    #print(pts)
     return pts
 
 

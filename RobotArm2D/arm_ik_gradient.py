@@ -36,6 +36,19 @@ def vector_to_goal(arm_with_angles, target):
     #   Calculate and return the vector
 # YOUR CODE HERE
 
+    grasp_location = afk.get_gripper_location(arm_with_angles)
+    
+    #print(grasp_location)
+
+    vector = np.array([[target[0] - grasp_location[0]], 
+                   [target[1] - grasp_location[1]]])  # This gives a 2x1 vector
+    
+    #vector = ((target[0] - grasp_location[0]), 
+    #               (target[1] - grasp_location[1]))  # This gives a 2x1 vector
+
+    #print(tuple(vector.flatten()))
+    return vector
+
 
 def distance_to_goal(arm_with_angles, target):
     """
@@ -50,6 +63,9 @@ def distance_to_goal(arm_with_angles, target):
 
     # TODO: Call the function above, then return the vector's length
 # YOUR CODE HERE
+    vector = vector_to_goal(arm_with_angles, target)
+    distance = np.linalg.norm(vector)
+    return distance
 
 
 def calculate_gradient(arm, angles, target):
@@ -78,7 +94,43 @@ def calculate_gradient(arm, angles, target):
     # Step 3: Do the wrist/gripper angle the same way (but remember, that angle
     #   is stored in angles[-1][0])
 # YOUR CODE HERE
-    return derivs
+
+
+    #Step 1
+    afk.set_angles_of_arm_geometry(arm,angles)  # Set the current angles
+    initial_distance = distance_to_goal(arm, target)
+
+    #Step 2
+    for i in range(len(angles)-1):
+        angles[i] += h
+        afk.set_angles_of_arm_geometry(arm,angles)
+        distance_plus_h = distance_to_goal(arm, target)
+
+    # Perturb the angle negatively
+        angles[i] -= h  # Subtracting 2h to revert and then go to negative perturbation
+
+     # Compute the derivative and append to derivs
+        derivative = (distance_plus_h - initial_distance) / h
+        derivs.append(derivative)
+
+    #Gripper
+# Step 3: Do the wrist/gripper angle
+    #print('gripper')
+
+    #print(angles)
+    angles[-1][0] += h
+    afk.set_angles_of_arm_geometry(arm,angles)
+    distance_plus_h = distance_to_goal(arm, target)
+
+    angles[-1][0] -= h
+
+    # Compute the derivative for the wrist angle
+    derivative = (distance_plus_h - initial_distance) / h
+    derivs.append(derivative)
+
+
+    return np.array(derivs)
+
 
 
 # ------------------------ Gradient descent -----------------
@@ -121,6 +173,8 @@ def gradient_descent(arm, angles, target, b_one_step=True) -> tuple:
         # TODO: Calculate the gradient with angles (don't for get to set the angles first)
 # YOUR CODE HERE
 
+        gradient = calculate_gradient(arm, angles, target)
+    
         # This is the while loop where you keep "shrinking" the step size until you get closer to the goal (if
         #  you ever do)
         # Again, use a Boolean to tag if you actually got better
@@ -138,7 +192,19 @@ def gradient_descent(arm, angles, target, b_one_step=True) -> tuple:
             #  Calculate what the new distance would be with those angles
             #  We go in the OPPOSITE direction of the gradient because we want to DECREASE distance
             new_angles = []
+            #print(angles)
 # YOUR CODE HERE
+            for i in range(len(angles)):
+                if i < len(angles) - 1:
+                    # For link angles
+                    new_angle = angles[i] - step_size * gradient[i]
+                else:
+                    # For the wrist and fingers
+                    new_angle = angles[i][0] - step_size * gradient[i]
+                    new_angle = [new_angle,0,0]
+                new_angles.append(new_angle)
+            #print(new_angles)
+
 
             # Now we see how we did
             afk.set_angles_of_arm_geometry(arm, new_angles)
@@ -150,6 +216,13 @@ def gradient_descent(arm, angles, target, b_one_step=True) -> tuple:
             #     set angles to be new_angles and best_distance to be new_distance
             #     set b_found_better to be True
 # YOUR CODE HERE
+            if new_dist < best_distance:
+                b_took_one_step = True
+                angles = new_angles  # Update angles
+                best_distance = new_dist  # Update best distance
+                b_found_better = True  # Indicate we found a better solution
+            else:
+                step_size /= 2  # Reduce the step size if no improvement            
             # Count iterations
             count_iterations += 1
 

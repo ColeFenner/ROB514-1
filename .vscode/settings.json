@@ -1,0 +1,6 @@
+{
+    "python.analysis.extraPaths": [
+        "./Skills",
+        "./Python_tutorials/a_tutorial_"
+    ]
+}

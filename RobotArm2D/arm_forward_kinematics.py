@@ -38,9 +38,19 @@ def set_transform_base(obj_wedge, base_width=1.0, base_height=0.5):
     #  (stored in the key "Matrix") will happen when we make the plot
     # Open up Data/Wedge.json if you want to see the XYs (this shape is made in objects_in_world.py)
 # YOUR CODE HERE
+    scale_matrix = mt.make_scale_dict(sx=base_width /4, sy=base_height)
+    obj_wedge["Matrix seq"].append(scale_matrix)
+
+    rotate_matrix = mt.make_rotation_dict(theta=np.pi / 2)  # 90 degrees = π/2 radians
+    obj_wedge["Matrix seq"].append(rotate_matrix)
+
+
+    translate_matrix = mt.make_translation_dict(dx=0.0, dy=0.25)  # Keep it at origin
+    obj_wedge["Matrix seq"].append(translate_matrix)
+
     # Force recalculation of matrix
     obj_wedge["Matrix"] = mt.make_matrix_from_sequence(obj_wedge["Matrix seq"])
-
+    #print(obj_wedge["Matrix"])
     # Setting up for being able to position and orient the arm somewhere else
     obj_wedge["Angle"] = 0.0
     obj_wedge["Position"] = 0.0
@@ -60,9 +70,16 @@ def set_transform_link(obj_square, arm_length, arm_height):
     # TODO: append transformations to obj_square["Matrix seq"] to get it in the right position/size/orientation
     #  Reminder that squares are defined by -1,-1 to 1,1, and so currently have side lengths of 2...
 # YOUR CODE HERE
+    scale_matrix = mt.make_scale_dict(sx=arm_length / 2.0, sy=arm_height / 2.0)  # Divide by 2 since squares range from -1 to 1
+    obj_square["Matrix seq"].append(scale_matrix)
+
+    translate_matrix = mt.make_translation_dict(dx=arm_length / 2.0, dy=0.0)  # Move right by half the length
+    obj_square["Matrix seq"].append(translate_matrix)
+
 
     # Force recalculation of matrix
     obj_square["Matrix"] = mt.make_matrix_from_sequence(obj_square["Matrix seq"])
+    #print(obj_square["Matrix"])
 
     # Save the arm length in the dictionary
     obj_square["Arm length"] = arm_length
@@ -78,9 +95,12 @@ def set_transform_palm(obj_square, palm_width):
 
     # TODO: append transformations to obj_square["Matrix seq"] to get it in the right position/size/orientation
 # YOUR CODE HERE
+    scale_matrix = mt.make_scale_dict(sx=palm_width / 20.0, sy=palm_width / 2.0)  # Dividing by 2 for height, by 20 for width
+    obj_square["Matrix seq"].append(scale_matrix)
 
     # Force recalculation of matrix
     obj_square["Matrix"] = mt.make_matrix_from_sequence(obj_square["Matrix seq"])
+    #print(obj_square["Matrix"])
 
     # Keep this for later
     obj_square["Palm width"] = palm_width
@@ -101,10 +121,26 @@ def set_transform_finger(obj_wedge, palm_width, finger_size, b_is_top):
     # TODO: append transformations to obj_wedge["Matrix seq"] to get it in the right position/size/orientation
     #  b_is_top means it's the top finger...
 # YOUR CODE HERE
+    finger_length, finger_width = finger_size
+    scale_matrix = mt.make_scale_dict(sx=finger_width / 2.0, sy=finger_length / 2.0)  # Divide by 2 for correct scaling
+    obj_wedge["Matrix seq"].append(scale_matrix)
+
+    if b_is_top:
+        rotate_matrix = mt.make_rotation_dict(theta=np.pi / 2)  # 90 degrees = π/2 radians
+
+        translate_matrix = mt.make_translation_dict(dx=finger_length / 2.0 , dy=(palm_width / 2.0))  # Position below the palm
+    else:
+        rotate_matrix = mt.make_rotation_dict(theta=-np.pi / 2)  # 90 degrees = π/2 radians
+
+        translate_matrix = mt.make_translation_dict(dx=finger_length / 2.0 , dy=-(palm_width / 2.0))  # Position below the palm
+    #print(obj_wedge["Matrix seq"])
+    obj_wedge["Matrix seq"].append(rotate_matrix)
+    obj_wedge["Matrix seq"].append(translate_matrix)
+
 
     # Force recalculation of matrix
     obj_wedge["Matrix"] = mt.make_matrix_from_sequence(obj_wedge["Matrix seq"])
-
+    #print(obj_wedge["Matrix"])
     # Which finger?
     if b_is_top:
         obj_wedge["Location"] = "Top"
@@ -216,7 +252,20 @@ def get_matrix_base(base_link):
     #    Reminder: mt.get_xx_from_matrix is helpful here...
     #    Rotate first, then translate
 # YOUR CODE HERE
-    return np.identity(3)
+    #print(base_link)
+
+    dx , dy = mt.get_dx_dy_from_matrix(base_link['Matrix'])
+    theta = mt.get_theta_from_matrix(base_link['Matrix'])
+    #print(theta)
+    rotation_matrix = mt.make_rotation_dict(theta)
+    translate_back = mt.make_translation_dict(dx, dy*2)
+    matrix_seq = []
+    matrix_seq.append(rotation_matrix)
+    matrix_seq.append(translate_back)
+    #print(matrix_seq)
+    matrix = mt.make_matrix_from_sequence(matrix_seq)
+    #print(matrix)
+    return matrix
 
 
 def get_rotation_link(arm_link):
@@ -226,7 +275,15 @@ def get_rotation_link(arm_link):
 
     # TODO Create a rotation matrix based on the link's angle (stored with the key "Angle")
 # YOUR CODE HERE
-    return np.identity(3)
+    #print(arm_link)
+    #theta = mt.get_theta_from_matrix(arm_link['Matrix'])
+    #rotate_matrix = mt.make_rotation_dict(theta)
+    #rotation_matrix = mt.make_matrix_from_sequence(rotate_matrix)
+    #print(rotation_matrix)
+    rotation_matrix = mt.make_rotation_matrix(arm_link['Angle'])
+    #print(rotation_matrix)
+    return rotation_matrix
+
 
 
 def get_matrix_link(arm_link):
@@ -242,7 +299,21 @@ def get_matrix_link(arm_link):
     #    Reminder: mt.get_xx_from_matrix is helpful here...
     #    Rotate first, then translate
 # YOUR CODE HERE
-    return np.identity(3)
+    dx, dy = mt.get_dx_dy_from_matrix(arm_link["Matrix"])
+    translate_to_end = mt.make_translation_dict(dx*2, dy*2)
+
+
+    #print(f"Arm link angle (Angle): {arm_link['Angle']:.2f} radians")
+    rotation_matrix = mt.make_rotation_dict(arm_link['Angle'])
+
+    matrix_seq = []
+    matrix_seq.append(translate_to_end)  #  translate then rotate
+
+    matrix_seq.append(rotation_matrix) 
+    matrix = mt.make_matrix_from_sequence(matrix_seq)
+    #print(matrix)
+
+    return matrix
 
 
 def get_matrices_all_links(arm_with_angles):
@@ -267,6 +338,11 @@ def get_matrices_all_links(arm_with_angles):
         # TODO: append a matrix to the list that is the matrix that we will multiply this link from
         #   In other words, multiply the last matrix by the matrix for this link then add it to the list
 # YOUR CODE HERE
+        last_matrix = matrices[-1]  # Get the last matrix from the list
+        link_matrix = get_matrix_link(link)
+        current_matrix = last_matrix @ link_matrix  # Use matrix multiplication
+        matrices.append(current_matrix)
+
 
     return matrices
 
@@ -276,11 +352,27 @@ def get_matrix_finger(finger):
     Pulling this out as a method so we can use it elsewhere
     @param finger - the finger as a dictionary
     @return a 3x3 matrix"""
-
     # TODO:
     #   Translate the base of the finger back to the origin, rotate it, then translate it back out
     #   Reminder: The base of the finger can be found using mt.get_dx_dy_from_matrix
 # YOUR CODE HERE
+    #print(finger)
+
+    dx, dy = mt.get_dx_dy_from_matrix(finger['Matrix'])
+    #theta = mt.get_theta_from_matrix(finger['Matrix'])
+
+    translate_to_origin = mt.make_translation_dict(-dx, -dy)
+    rotation_matrix = mt.make_rotation_dict(finger['Angle'])
+
+    translate_back = mt.make_translation_dict(dx, dy)
+    matrix_seq = []
+    matrix_seq.append(translate_to_origin)
+    matrix_seq.append(rotation_matrix)
+    matrix_seq.append(translate_back)
+    #print(matrix_seq)
+    matrix = mt.make_matrix_from_sequence(matrix_seq)
+    #print(matrix)
+
     return matrix
 
 
@@ -301,7 +393,20 @@ def get_gripper_location(arm_with_angles):
     # Step 3: Multiply the last matrix by [d, 0] to get the location in world coordinates
 # YOUR CODE HERE
     # Format for returning a tuple
-    return (0, 0)
+    #print(gripper)
+
+    matrices = get_matrices_all_links(arm_with_angles)
+    last_matrix = matrices[-1]  # The matrix for the gripper position
+
+    #grasp_position = np.array([grasp_dist, 0, 1])  # Homogeneous coordinates
+
+    grasp_position = get_rotation_link(gripper[0])
+
+    grasp_location = last_matrix @ grasp_position @ [grasp_dist,0,1]  # Matrix multiplication
+
+
+    #print((grasp_location[0], grasp_location[1]))
+    return (grasp_location[0], grasp_location[1])  # Return x and y coordinates as a tuple
 
 
 def get_gripper_orientation(arm_with_angles):
@@ -317,8 +422,15 @@ def get_gripper_orientation(arm_with_angles):
     # Step 2: Use the last matrix plus the rotation of the wrist to build a matrix for the gripper
     # Step 3: Get the matrix that takes (1,0) to the world
 # YOUR CODE HERE
-    # Format for returning a tuple
-    return (1, 0)
+
+    matrices = get_matrices_all_links(arm_with_angles)
+
+    last_matrix = matrices[-1]  # The matrix for the gripper position
+
+    loc_matrix = get_rotation_link(gripper[0]) @ last_matrix @ [1,0,0]
+
+    
+    return (loc_matrix[0], loc_matrix[1])  # Return the x and y components as a tuple
 
 # ----------------- Plotting routines --------------------------
 
