@@ -167,7 +167,7 @@ def dijkstra(im, robot_loc, goal_loc):
     #   push takes the queue itself, then a tuple with the first element the priority value and the second
     #   being whatever data you want to keep - in this case, the robot location, which is a tuple
     heapq.heappush(priority_queue, (0, robot_loc))
-
+    #print(priority_queue)
     # The power of dictionaries - we're going to use a dictionary to store every node we've visited, along
     #   with the node we came from and the current distance
     # This is easier than trying to get the distance from the heap
@@ -199,6 +199,30 @@ def dijkstra(im, robot_loc, goal_loc):
         #  https://docs.google.com/presentation/d/1pt8AcSKS2TbKpTAVV190pRHgS_M38ldtHQHIltcYH6Y/edit#slide=id.g18d0c3a1e7d_0_0
 # YOUR CODE HERE
 
+        if node_ij == goal_loc: #At Goal, get out of while loop
+            break
+
+        if visited[node_ij][2]:  # If closed, skip in while loop
+            continue
+
+        visited[node_ij] = (node_score, visited[node_ij][1], True)  # Mark as closed
+
+        for neighbor in eight_connected(node_ij):  # or four connected or eight_connected can both work
+            if (is_free(im, neighbor)):
+
+                move_cost = 1.4 if abs(neighbor[0] - node_ij[0]) == 1 and abs(neighbor[1] - node_ij[1]) == 1 else 1
+
+                new_score = node_score + move_cost
+
+                if neighbor not in visited or new_score < visited[neighbor][0]:
+                    visited[neighbor] = (new_score, node_ij, False)
+                    heapq.heappush(priority_queue, (new_score, neighbor))
+
+
+    if goal_loc not in visited:  #Does finding of Goal Node
+        raise ValueError(f"Goal {goal_loc} not reached.")
+
+    '''
     # Now check that we actually found the goal node
     try_2 = goal_loc
     if not goal_loc in visited:
@@ -212,11 +236,18 @@ def dijkstra(im, robot_loc, goal_loc):
         return dijkstra(im, robot_loc, try_2)
         raise ValueError(f"Goal {goal_loc} not reached")
         return []
+    '''
 
     path = []
     path.append(goal_loc)
     # TODO: Build the path by starting at the goal node and working backwards
 # YOUR CODE HERE
+    current = goal_loc
+
+    while current is not None:
+        path.append(current)
+        current = visited[current][1]
+    path.reverse()
 
     return path
 
