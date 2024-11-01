@@ -110,6 +110,16 @@ def is_reachable(im, pix):
     #  False otherwise
     # You can use four or eight connected - eight will return more points
 # YOUR CODE HERE
+
+    if not (0 <= pix[0] < im.shape[1] and 0 <= pix[1] < im.shape[0]):
+        return False  # Return False if pix is out of bounds
+    
+    for neighbor in path_planning.eight_connected(pix):
+        if (0 <= neighbor[0] < im.shape[1] and 0 <= neighbor[1] < im.shape[0]):
+            if path_planning.is_free(im, neighbor):
+                return True
+
+
     return False
 
 
@@ -119,17 +129,59 @@ def find_all_possible_goals(im):
     This is because of noise in the map - there may be some isolated pixels
     @param im - thresholded image
     @return dictionary or list or binary image of possible pixels"""
-
+    
 # YOUR CODE HERE
+    possible_goals = []
+    for i in range(im.shape[0]):
+        for j in range(im.shape[1]):
+            if path_planning.is_unseen(im, (j, i)) and is_reachable(im, (j, i)):
+                possible_goals.append((j, i))
+    return possible_goals
 
+def calculate_unexplored_area(im, point):
+    """Calculate the area of unexplored pixels around a given point.
+    @param im - the thresholded image
+    @param point - the pixel (i, j) to evaluate
+    @return unexplored_area - the number of unseen pixels around the point
+    """
+    unexplored_area = 0
+    for neighbor in path_planning.eight_connected(point):
+        if (0 <= neighbor[0] < im.shape[1] and 0 <= neighbor[1] < im.shape[0]):
+            if path_planning.is_unseen(im, neighbor):  # Count only unseen pixels
+                unexplored_area += 1
+    return unexplored_area
+
+def count_free_neighbors(im, pix):
+    """ Count the number of free neighbors around a pixel.
+    @param im - the image
+    @param pix - the pixel (j, i)
+    @return count of free neighbors
+    """
+    count = 0
+    for neighbor in path_planning.eight_connected(pix):  # Assuming eight_connected is defined
+        if (0 <= neighbor[0] < im.shape[1] and 0 <= neighbor[1] < im.shape[0]):
+            if path_planning.is_free(im, neighbor):  # Check if the neighbor is free
+                count += 1
+    return count
 
 def find_best_point(im, possible_points, robot_loc):
-    """ Pick one of the unseen points to go to
+    """ Pick one of the unseen points that is surrounded by the most free space.
     @param im - thresholded image
-    @param possible_points - possible points to chose from
+    @param possible_points - possible points to choose from
     @param robot_loc - location of the robot (in case you want to factor that in)
     """
-# YOUR CODE HERE
+    best_point = None
+    max_free_neighbors = -1  # Start with a low number to find maximum
+
+    for point in possible_points:
+        free_neighbor_count = count_free_neighbors(im, point)
+
+        # If this point has more free neighbors than the current best, update it
+        if free_neighbor_count > max_free_neighbors:
+            max_free_neighbors = free_neighbor_count
+            best_point = point
+    best_point = (best_point[0],best_point[1]+3)
+    return best_point
 
 
 def find_waypoints(im, path):
@@ -140,6 +192,18 @@ def find_waypoints(im, path):
 
     # Again, no right answer here
 # YOUR CODE HERE
+    waypoints = [path[0]]  # Start with the initial position
+    for i in range(1, len(path) - 1):
+        prev, curr, nxt = path[i - 1], path[i], path[i + 1]
+        
+        # Only add a waypoint if there's a direction change
+        if (curr[0] - prev[0], curr[1] - prev[1]) != (nxt[0] - curr[0], nxt[1] - curr[1]):
+            waypoints.append(curr)
+    
+    waypoints.append(path[-1])  # Include the goal position
+    return waypoints
+
+
 
 if __name__ == '__main__':
     # Doing this here because it is a different yaml than JN
